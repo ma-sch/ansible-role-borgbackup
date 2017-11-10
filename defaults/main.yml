@@ -50,3 +50,18 @@ borgbackup_prune_jobs:
     day: "*"
     hour: "{{ 4 }}"
     minute: "{{ 0 }}"
+
+borgbackup_check_enabled: yes
+borgbackup_check_jobs:
+  - name: system
+    check_options: "--verbose"
+    day: "*"
+    hour: "{{ 4 }}"
+    minute: "{{ 0 }}"
+
+# about random :
+# purpose is to set indempotent random crontab values that differs when many jobs are croned.
+# random_hour : if defined, a indempotent random value is computed between 0 and the value specified.
+# Then, the crontab hour will be addition of hour and random_hour.
+# a modulo 24 is applied in order to ensure valid hour are specified.
+# random_minute and random_day works the same way.
