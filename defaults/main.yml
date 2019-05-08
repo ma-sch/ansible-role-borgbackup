@@ -22,7 +22,7 @@ borgbackup_client_lastlog_dir: "/var/log/borg"
 borgbackup_encryption_mode: "none"
 borgbackup_passphrase: "yoursecret"
 #borgbackup_client_backup_server: backup01.example.com
-#borgbackup_client_jobs:
+#borgbackup_create_jobs:
 #  - name: system
 #    options: "--lock-wait 7200 --compression lzma"
 #    day: "*"
@@ -40,29 +40,16 @@ borgbackup_server_home: "/srv/borgbackup"
 borgbackup_server_pool: "{{ borgbackup_server_home }}/repos"
 
 borgbackup_prune_enabled: yes
-borgbackup_prune_jobs:
-  - name: system
-    prune_options: "--keep-daily=7 --keep-weekly=4"
-    day: "*"
-    hour: "{{ 4 }}"
-    minute: "{{ 0 }}"
-  - name: scripts
-    prune_options: "--keep-within=10d"
-    day: "*"
-    hour: "{{ 4 }}"
-    minute: "{{ 0 }}"
+# borgbackup_prune_jobs:
+#   - name: system
+#     prune_options: "--lock-wait 7200 --keep-daily=7 --keep-weekly=4 --keep-monthly=12 --keep-yearly=-1"#     day: "*"
+#     hour: 4
+#     minute: 0
 
 borgbackup_check_enabled: yes
-borgbackup_check_jobs:
-  - name: system
-    check_options: "--verbose"
-    day: "*"
-    hour: "{{ 4 }}"
-    minute: "{{ 0 }}"
-
-# about random :
-# purpose is to set indempotent random crontab values that differs when many jobs are croned.
-# random_hour : if defined, a indempotent random value is computed between 0 and the value specified.
-# Then, the crontab hour will be addition of hour and random_hour.
-# a modulo 24 is applied in order to ensure valid hour are specified.
-# random_minute and random_day works the same way.
+# borgbackup_check_jobs:
+#   - name: system
+#     check_options: "--lock-wait 28800"
+#     day: "*"
+#     hour: 4
+#     minute: 0
