@@ -110,7 +110,7 @@
   cron:
     name: "borg backup {{ item.name }}"
     user: root
-    job: "{{ borgbackup_client_scripts_dir }}/{{ item.name }}_{{ backup_suffix_script_filename }}.sh 2>&1 | /usr/bin/logger -t borgbackup"
+    job: "{{ borgbackup_client_scripts_dir }}/{{ item.name }}_{{ prune_suffix_script_filename }}.sh 2>&1 | /usr/bin/logger -t borgbackup"
     day: "{{ item.day | default('*') }}"
     hour: "{{ item.hour | default('1') }}"
     minute: "{{ item.minute | default('0') }}"
