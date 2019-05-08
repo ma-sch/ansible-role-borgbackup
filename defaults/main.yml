@@ -69,7 +69,8 @@ borgbackup_client_lastlog_dir: "/var/log/borg"
 borgbackup_prune_enabled: yes
 # borgbackup_prune_jobs:
 #   - name: system
-#     prune_options: "--lock-wait 7200 --keep-daily=7 --keep-weekly=4 --keep-monthly=12 --keep-yearly=-1"#     day: "*"
+#     prune_options: "--lock-wait 7200 --keep-daily=7 --keep-weekly=4 --keep-monthly=12 --keep-yearly=-1"
+#     day: "*"
 #     hour: 4
 #     minute: 0
 
