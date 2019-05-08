@@ -5,12 +5,12 @@
     name: borg
     state: present
 
-- name: Install cron
+- name: install cron
   pacman:
     name: cronie
     state: present
 
-- name: Enable cron with systemd
+- name: enable cron with systemd
   systemd:
     daemon_reload: yes
     service: cronie

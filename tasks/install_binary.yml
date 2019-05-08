@@ -1,12 +1,12 @@
 ---
 
-- name: Download borg binary
+- name: download borg binary
   get_url:
     url: "{{ borgbackup_binary_uri }}"
     dest: "{{ borgbackup_binary }}-{{ borgbackup_binary_version }}"
     mode: "755"
 
-- name: Link install
+- name: link install
   file:
     src: "{{ borgbackup_binary }}-{{ borgbackup_binary_version }}"
     dest: "{{ borgbackup_binary }}"
