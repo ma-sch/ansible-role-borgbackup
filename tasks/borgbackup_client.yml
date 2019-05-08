@@ -49,12 +49,20 @@
     mode: 0750
     state: directory
 
+- name: backup supervision lastlog dir
+  file:
+    path: "{{ borgbackup_client_lastlog_dir }}"
+    owner: root
+    group: root
+    mode: 0755
+    state: directory
+
 - name: check if the repositories already exist
   command: "{{ borgbackup_binary }} list {{ borgbackup_server_user }}@{{ borgbackup_client_backup_server }}:{{ item.name }}"
   environment:
     - BORG_RSH: "ssh -o StrictHostKeyChecking=no -i {{ borgbackup_client_ssh_key_file }}"
     - BORG_PASSPHRASE: "{{ borgbackup_passphrase }}"
-  with_items: "{{ borgbackup_client_jobs }}"
+  with_items: "{{ borgbackup_create_jobs }}"
   register: list_repos
   failed_when: False
   changed_when: False
@@ -75,30 +83,30 @@
   environment:
     - BORG_RSH: "ssh -o StrictHostKeyChecking=no -i {{ borgbackup_client_ssh_key_file }}"
     - BORG_PASSPHRASE: "{{ borgbackup_passphrase }}"
-  with_items: "{{ borgbackup_client_jobs }}"
+  with_items: "{{ borgbackup_create_jobs }}"
   register: borgbackup_initialize_result
   failed_when: (borgbackup_initialize_result.rc != 0) and (borgbackup_initialize_result.stderr != "") and ('already exists' not in borgbackup_initialize_result.stderr)
   when: item.name not in initialized_repos
 
-- name: generate filename for backup / prune / check scripts
+- name: generate filename for create / prune / check scripts
   set_fact:
-    backup_suffix_script_filename: "backup_{{ borgbackup_client_backup_server.split('.')[0] }}"
+    create_suffix_script_filename: "create_{{ borgbackup_client_backup_server.split('.')[0] }}"
     prune_suffix_script_filename: "prune_{{ borgbackup_client_backup_server.split('.')[0] }}"
     check_suffix_script_filename: "check_{{ borgbackup_client_backup_server.split('.')[0] }}"
 
 #
-# backup scripts
+# borg create scripts
 #
-- name: deploy backup scripts
+- name: deploy borg create scripts
   template:
-    dest: "{{ borgbackup_client_scripts_dir }}/{{ item.name }}_{{ backup_suffix_script_filename }}.sh"
-    src: job.sh.j2
+    dest: "{{ borgbackup_client_scripts_dir }}/{{ item.name }}_{{ create_suffix_script_filename }}.sh"
+    src: create_job.sh.j2
     owner: root
     group: root
     mode: 0700
-  with_items: "{{ borgbackup_client_jobs }}"
+  with_items: "{{ borgbackup_create_jobs }}"
 
-- name: schedule backup scripts on cron
+- name: schedule borg create scripts on cron
   cron:
     name: "borg backup {{ item.name }}"
     user: root
@@ -107,13 +115,20 @@
     hour: "{{ item.hour | default('1') }}"
     minute: "{{ item.minute | default('0') }}"
     state: present
-    cron_file: "borgbackup_{{ item.name }}_{{ backup_suffix_script_filename }}"
-  with_items: "{{ borgbackup_client_jobs }}"
+    cron_file: "borgbackup_{{ item.name }}_{{ create_suffix_script_filename }}"
+  with_items: "{{ borgbackup_create_jobs }}"
+
+- name: deploy borg create fake logs, when no log yet
+  shell: echo -ne "FAKE LOG\nterminating with success status, rc 0\n" | tee "{{ borgbackup_client_lastlog_dir }}/{{ item.name }}_{{ create_suffix_script_filename }}.lastlog"
+  args:
+    chdir: "{{ borgbackup_client_lastlog_dir }}"
+    creates: "{{ borgbackup_client_lastlog_dir }}/{{ item.name }}_{{ create_suffix_script_filename }}.lastlog"
+  with_items: "{{ borgbackup_create_jobs }}"
 
 #
-# prune scripts
+# borg prune scripts
 #
-- name: deploy prune scripts
+- name: deploy borg prune scripts
   template:
     dest: "{{ borgbackup_client_scripts_dir }}/{{ item.name }}_{{ prune_suffix_script_filename }}.sh"
     src: prune_job.sh.j2
@@ -123,7 +138,7 @@
   with_items: "{{ borgbackup_prune_jobs }}"
   when: borgbackup_prune_enabled
 
-- name: schedule prune scripts on cron
+- name: schedule borg prune scripts on cron
   cron:
     name: "borg prune {{ item.name }}"
     user: root
@@ -136,10 +151,17 @@
   with_items: "{{ borgbackup_prune_jobs }}"
   when: borgbackup_prune_enabled
 
+- name: deploy borg prune fake logs, when no log yet
+  shell: echo -ne "FAKE LOG\nterminating with success status, rc 0\n" | tee "{{ borgbackup_client_lastlog_dir }}/{{ item.name }}_{{ prune_suffix_script_filename }}.lastlog"
+  args:
+    chdir: "{{ borgbackup_client_lastlog_dir }}"
+    creates: "{{ borgbackup_client_lastlog_dir }}/{{ item.name }}_{{ prune_suffix_script_filename }}.lastlog"
+  with_items: "{{ borgbackup_prune_jobs }}"
+
 #
-# check repository scripts
+# borg check scripts
 #
-- name: deploy check scripts
+- name: deploy borg check scripts
   template:
     dest: "{{ borgbackup_client_scripts_dir }}/{{ item.name }}_{{ check_suffix_script_filename }}.sh"
     src: check_job.sh.j2
@@ -149,7 +171,7 @@
   with_items: "{{ borgbackup_check_jobs }}"
   when: borgbackup_check_enabled
 
-- name: schedule check scripts on cron
+- name: schedule borg check scripts on cron
   cron:
     name: "borg check {{ item.name }}"
     user: root
@@ -161,3 +183,10 @@
     cron_file: "borgbackup_{{ item.name }}_{{ check_suffix_script_filename }}"
   with_items: "{{ borgbackup_check_jobs }}"
   when: borgbackup_check_enabled
+
+- name: deploy borg check fake logs, when no log yet
+  shell: echo -ne "FAKE LOG\nterminating with success status, rc 0\n" | tee "{{ borgbackup_client_lastlog_dir }}/{{ item.name }}_{{ check_suffix_script_filename }}.lastlog"
+  args:
+    chdir: "{{ borgbackup_client_lastlog_dir }}"
+    creates: "{{ borgbackup_client_lastlog_dir }}/{{ item.name }}_{{ check_suffix_script_filename }}.lastlog"
+  with_items: "{{ borgbackup_check_jobs }}"
