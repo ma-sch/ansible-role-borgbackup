@@ -28,7 +28,7 @@ borgbackup_server_pool: "{{ borgbackup_server_home }}/repos"
 ## borgbackup general configuration
 ##
 borgbackup_encryption_mode: "none"
-borgbackup_passphrase: "yoursecret"
+borgbackup_passphrase: "{{ vault_borgbackup_passphrase }}"
 
 ##
 ## borg client configuration
