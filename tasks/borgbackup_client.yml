@@ -22,6 +22,8 @@
   changed_when: False
 
 - name: add ssh-pubkey to backup server
+  vars:
+    ansible_become_pass: "{{ borgbackup_server_password | ansible_become_pass }}"
   delegate_to: "{{ borgbackup_client_backup_server }}"
   # Start the delegate from the ansible master to avoid distributing more keys
   connection: local
@@ -31,6 +33,8 @@
     key_options: 'command="cd {{ borgbackup_server_pool }}/{{ inventory_hostname }};borg serve --restrict-to-path {{ borgbackup_server_pool }}/{{ inventory_hostname }}",no-port-forwarding,no-X11-forwarding,no-pty,no-agent-forwarding,no-user-rc'
 
 - name: create repo path for host
+  vars:
+    ansible_become_pass: "{{ borgbackup_server_password | ansible_become_pass }}"
   delegate_to: "{{ borgbackup_client_backup_server }}"
   # Start the delegate from the ansible master to avoid distributing more keys
   connection: local

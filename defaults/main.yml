@@ -20,6 +20,10 @@ borgbackup_server_group: "borgbackup"
 borgbackup_server_home: "/srv/borgbackup"
 borgbackup_server_pool: "{{ borgbackup_server_home }}/repos"
 
+# if necessary, specify a password for the backup server in order to 
+# add the client ssh key to the backup server's authorized keys
+# borgbackup_server_password: "{{ vault_borgbackup_server_password }}"
+
 ##
 ## borgbackup general configuration
 ##
