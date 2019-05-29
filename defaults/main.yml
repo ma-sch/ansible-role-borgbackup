@@ -20,7 +20,7 @@ borgbackup_server_group: "borgbackup"
 borgbackup_server_home: "/srv/borgbackup"
 borgbackup_server_pool: "{{ borgbackup_server_home }}/repos"
 
-# if necessary, specify a password for the backup server in order to 
+# if necessary, specify a password for the backup server in order to
 # add the client ssh key to the backup server's authorized keys
 # borgbackup_server_password: "{{ vault_borgbackup_server_password }}"
 
@@ -34,6 +34,8 @@ borgbackup_passphrase: "{{ vault_borgbackup_passphrase }}"
 ## borg client configuration
 ##
 borgbackup_client: False
+# SSH server port
+borgbackup_client_backup_server_port: 22
 
 # Specify the SSH private key type to use. By default role will generate
 # ED25519 keys if they are supported by the remote host, otherwise RSA keys
@@ -55,7 +57,7 @@ borgbackup_client_lastlog_dir: "/var/log/borg"
 # max retry attempt on create/prune/check task failure. only one attempt if unset.
 #borgbackup_task_retry: 3
 
-# retry attempt wait time 
+# retry attempt wait time
 #borgbackup_task_retry_wait: 30
 
 # borgbackup jobs examples :
