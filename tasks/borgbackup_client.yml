@@ -23,7 +23,7 @@
 
 - name: add ssh-pubkey to backup server
   vars:
-    ansible_become_pass: "{{ borgbackup_server_password | default(ansible_become_password) }}"
+    ansible_become_pass: "{{ hostvars[borgbackup_client_backup_server].ansible_become_pass }}"
   delegate_to: "{{ borgbackup_client_backup_server }}"
   # Start the delegate from the ansible master to avoid distributing more keys
   connection: local
@@ -34,7 +34,7 @@
 
 - name: create repo path for host
   vars:
-    ansible_become_pass: "{{ borgbackup_server_password | default(ansible_become_password) }}"
+    ansible_become_pass: "{{ hostvars[borgbackup_client_backup_server].ansible_become_pass }}"
   delegate_to: "{{ borgbackup_client_backup_server }}"
   # Start the delegate from the ansible master to avoid distributing more keys
   connection: local
@@ -64,7 +64,7 @@
 - name: check if the repositories already exist
   command: "{{ borgbackup_binary }} list {{ borgbackup_server_user }}@{{ borgbackup_client_backup_server }}:{{ item.name }}"
   environment:
-    - BORG_RSH: "ssh -o StrictHostKeyChecking=no -i {{ borgbackup_client_ssh_key_file }} -p {{ borgbackup_client_backup_server_port }}"
+    - BORG_RSH: "ssh -o StrictHostKeyChecking=no -i {{ borgbackup_client_ssh_key_file }} -p {{ hostvars[borgbackup_client_backup_server].ansible_port }}"
     - BORG_PASSPHRASE: "{{ borgbackup_passphrase }}"
   with_items: "{{ borgbackup_create_jobs }}"
   register: list_repos
@@ -83,9 +83,9 @@
   when: item.rc == 0
 
 - name: initialize repositories
-  command: "{{ borgbackup_binary }} init --encryption {{ borgbackup_encryption_mode }} {{ borgbackup_server_user }}@{{ borgbackup_client_backup_server }}:{{ item.name }}"
+  command: "{{ borgbackup_binary }} init --encryption {{ borgbackup_encryption_mode }} {{ borgbackup_server_user }}@{{ hostvars[borgbackup_client_backup_server].ansible_host }}:{{ item.name }}"
   environment:
-    - BORG_RSH: "ssh -o StrictHostKeyChecking=no -i {{ borgbackup_client_ssh_key_file }} -p {{ borgbackup_client_backup_server_port }}"
+    - BORG_RSH: "ssh -o StrictHostKeyChecking=no -i {{ borgbackup_client_ssh_key_file }} -p {{ hostvars[borgbackup_client_backup_server].ansible_port }}"
     - BORG_PASSPHRASE: "{{ borgbackup_passphrase }}"
   with_items: "{{ borgbackup_create_jobs }}"
   register: borgbackup_initialize_result
