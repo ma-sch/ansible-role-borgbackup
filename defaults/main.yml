@@ -17,7 +17,7 @@ borgbackup_binary: "/usr/local/bin/borg"
 borgbackup_server: False
 borgbackup_server_user: "borgbackup"
 borgbackup_server_group: "borgbackup"
-borgbackup_server_home: "/srv/borgbackup"
+# borgbackup_server_home: "/srv/borgbackup"
 borgbackup_server_pool: "{{ borgbackup_server_home }}/repos"
 
 # if necessary, specify a password for the backup server in order to
@@ -28,7 +28,7 @@ borgbackup_server_pool: "{{ borgbackup_server_home }}/repos"
 ## borgbackup general configuration
 ##
 borgbackup_encryption_mode: "none"
-borgbackup_passphrase: "{{ vault_borgbackup_passphrase }}"
+# borgbackup_passphrase: "{{ vault_borgbackup_passphrase }}"
 
 ##
 ## borg client configuration
@@ -50,7 +50,7 @@ borgbackup_client_scripts_dir: "/etc/borg"
 borgbackup_client_lastlog_dir: "/var/log/borg"
 
 # backup server IP or FQDN used during ansible installation AND backup operation.
-#borgbackup_client_backup_server: backup01.example.com
+borgbackup_client_backup_server: backup01.example.com
 
 # max retry attempt on create/prune/check task failure. only one attempt if unset.
 #borgbackup_task_retry: 3
@@ -85,3 +85,14 @@ borgbackup_check_enabled: yes
 #     day: "*"
 #     hour: 4
 #     minute: 0
+
+
+
+### Borgbackup local configuration
+borgbackup_local: False
+borgbackup_local_user: borgbackup
+borgbackup_local_group: borgbackup
+borgbackup_local_name: "define name"
+# borgbackup_local_target: "/backup/target/location"
+borgbackup_local_scripts_dir: "/etc/borg"
+borgbackup_local_lastlog_dir: "/var/log/borg"

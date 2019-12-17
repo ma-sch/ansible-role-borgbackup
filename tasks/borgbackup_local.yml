@@ -1,0 +1,186 @@
+---
+
+- name: "Check available SSH key types"
+  shell: ssh -Q key 2>/dev/null || echo "ssh-rsa"
+  register: borgbackup_register_key_types
+  changed_when: False
+  check_mode: no
+
+- name: "Create group '{{ borgbackup_local_group }}' for Borg"
+  group:
+    name: "{{ borgbackup_local_group }}"
+    state: present
+
+- name: "Create user '{{ borgbackup_local_user }}' for Borg"
+  user:
+    name: "{{ borgbackup_local_user }}"
+    group: "{{ borgbackup_local_group }}"
+    createhome: no
+    state: present
+
+- name: "Manage permissions"
+  file:
+    path: "{{ item }}"
+    owner: "{{ borgbackup_local_user }}"
+    group: "{{ borgbackup_local_group }}"
+    mode: 0700
+    state: directory
+  with_items:
+    - "{{ borgbackup_local_target }}"
+
+- name: "Create local repo path: {{ borgbackup_local_target }}"
+  become: true
+  file:
+    path: "{{ borgbackup_local_target }}"
+    owner: "{{ borgbackup_local_user }}"
+    group: "{{ borgbackup_local_group }}"
+    mode: 0700
+    state: directory
+
+- name: "Create backup scripts dir: {{ borgbackup_local_scripts_dir }}"
+  file:
+    path: "{{ borgbackup_local_scripts_dir }}"
+    owner: root
+    group: root
+    mode: 0750
+    state: directory
+
+- name: "Create backup supervision lastlog dir: {{ borgbackup_local_lastlog_dir }}"
+  file:
+    path: "{{ borgbackup_local_lastlog_dir }}"
+    owner: root
+    group: root
+    mode: 0755
+    state: directory
+
+- name: "Check if repositories already exist"
+  command: "{{ borgbackup_binary }} list {{ borgbackup_local_target }}/{{ item.name }}"
+  environment:
+    - BORG_PASSPHRASE: "{{ borgbackup_passphrase }}"
+  with_items: "{{ borgbackup_create_jobs }}"
+  register: list_repos
+  failed_when: False
+  changed_when: False
+  check_mode: no
+
+- name: "Initialize empty list of initialized repositories"
+  set_fact:
+    initialized_repos: []
+
+- name: "Store only initialized repositories in the list"
+  set_fact:
+    initialized_repos: "{{ initialized_repos }} + [ '{{ item.item.name }}' ]"
+  with_items: "{{ list_repos.results }}"
+  when: item.rc == 0
+
+- name: "Initialize repositories"
+  command: "{{ borgbackup_binary }} init --encryption {{ borgbackup_encryption_mode }} {{ borgbackup_local_target }}/{{ item.name }}"
+  environment:
+    - BORG_PASSPHRASE: "{{ borgbackup_passphrase }}"
+  with_items: "{{ borgbackup_create_jobs }}"
+  register: borgbackup_initialize_result
+  failed_when: (borgbackup_initialize_result.rc != 0) and (borgbackup_initialize_result.stderr != "") and ('already exists' not in borgbackup_initialize_result.stderr)
+  when: item.name not in initialized_repos
+
+- name: "Generate filename for create / prune / check scripts"
+  set_fact:
+    create_suffix_script_filename: "create_{{ borgbackup_local_name }}"
+    prune_suffix_script_filename: "prune_{{ borgbackup_local_name }}"
+    check_suffix_script_filename: "check_{{ borgbackup_local_name }}"
+
+#
+# borg create scripts
+#
+- name: "Deploy borg create scripts"
+  template:
+    dest: "{{ borgbackup_local_scripts_dir }}/{{ item.name }}_{{ create_suffix_script_filename }}.sh"
+    src: create_job.sh.j2
+    owner: root
+    group: root
+    mode: 0700
+  with_items: "{{ borgbackup_create_jobs }}"
+
+- name: schedule borg create scripts on cron
+  cron:
+    name: "borg backup {{ item.name }}"
+    user: root
+    job: "{{ borgbackup_local_scripts_dir }}/{{ item.name }}_{{ create_suffix_script_filename }}.sh 2>&1 | /usr/bin/logger -t borgbackup"
+    day: "{{ item.day | default('*') }}"
+    hour: "{{ item.hour | default('1') }}"
+    minute: "{{ item.minute | default('0') }}"
+    state: present
+    cron_file: "borgbackup_{{ item.name }}_{{ create_suffix_script_filename }}"
+  with_items: "{{ borgbackup_create_jobs }}"
+
+- name: deploy borg create fake logs, when no log yet
+  shell: echo -ne "FAKE LOG\nterminating with success status, rc 0\n" | tee "{{ borgbackup_local_lastlog_dir }}/{{ item.name }}_{{ create_suffix_script_filename }}.lastlog"
+  args:
+    chdir: "{{ borgbackup_local_lastlog_dir }}"
+    creates: "{{ borgbackup_local_lastlog_dir }}/{{ item.name }}_{{ create_suffix_script_filename }}.lastlog"
+  with_items: "{{ borgbackup_create_jobs }}"
+
+#
+# borg prune scripts
+#
+- name: deploy borg prune scripts
+  template:
+    dest: "{{ borgbackup_local_scripts_dir }}/{{ item.name }}_{{ prune_suffix_script_filename }}.sh"
+    src: prune_job.sh.j2
+    owner: root
+    group: root
+    mode: 0700
+  with_items: "{{ borgbackup_prune_jobs }}"
+  when: borgbackup_prune_enabled
+
+- name: schedule borg prune scripts on cron
+  cron:
+    name: "borg prune {{ item.name }}"
+    user: root
+    job: "{{ borgbackup_local_scripts_dir }}/{{ item.name }}_{{ prune_suffix_script_filename }}.sh 2>&1 | /usr/bin/logger -t borgbackup"
+    day: "{{ item.day | default('*') }}"
+    hour: "{{ item.hour | default('1') }}"
+    minute: "{{ item.minute | default('0') }}"
+    state: present
+    cron_file: "borgbackup_{{ item.name }}_{{ prune_suffix_script_filename }}"
+  with_items: "{{ borgbackup_prune_jobs }}"
+  when: borgbackup_prune_enabled
+
+- name: deploy borg prune fake logs, when no log yet
+  shell: echo -ne "FAKE LOG\nterminating with success status, rc 0\n" | tee "{{ borgbackup_local_lastlog_dir }}/{{ item.name }}_{{ prune_suffix_script_filename }}.lastlog"
+  args:
+    chdir: "{{ borgbackup_local_lastlog_dir }}"
+    creates: "{{ borgbackup_local_lastlog_dir }}/{{ item.name }}_{{ prune_suffix_script_filename }}.lastlog"
+  with_items: "{{ borgbackup_prune_jobs }}"
+
+#
+# borg check scripts
+#
+- name: deploy borg check scripts
+  template:
+    dest: "{{ borgbackup_local_scripts_dir }}/{{ item.name }}_{{ check_suffix_script_filename }}.sh"
+    src: check_job.sh.j2
+    owner: root
+    group: root
+    mode: 0700
+  with_items: "{{ borgbackup_check_jobs }}"
+  when: borgbackup_check_enabled
+
+- name: schedule borg check scripts on cron
+  cron:
+    name: "borg check {{ item.name }}"
+    user: root
+    job: "{{ borgbackup_local_scripts_dir }}/{{ item.name }}_{{ check_suffix_script_filename }}.sh 2>&1 | /usr/bin/logger -t borgbackup"
+    day: "{{ item.day | default('*') }}"
+    hour: "{{ item.hour | default('1') }}"
+    minute: "{{ item.minute | default('0') }}"
+    state: present
+    cron_file: "borgbackup_{{ item.name }}_{{ check_suffix_script_filename }}"
+  with_items: "{{ borgbackup_check_jobs }}"
+  when: borgbackup_check_enabled
+
+- name: deploy borg check fake logs, when no log yet
+  shell: echo -ne "FAKE LOG\nterminating with success status, rc 0\n" | tee "{{ borgbackup_local_lastlog_dir }}/{{ item.name }}_{{ check_suffix_script_filename }}.lastlog"
+  args:
+    chdir: "{{ borgbackup_local_lastlog_dir }}"
+    creates: "{{ borgbackup_local_lastlog_dir }}/{{ item.name }}_{{ check_suffix_script_filename }}.lastlog"
+  with_items: "{{ borgbackup_check_jobs }}"

@@ -11,7 +11,11 @@
   when: borgbackup_client
   tags: borgbackup
 
+- include: borgbackup_local.yml
+  when: borgbackup_local
+  tags: borgbackup
+
 - debug: 
-    msg: "Neither borgbackup_server nor borgbackup_client is enabled for this host"
-  when: borgbackup_server == False and borgbackup_client == False
+    msg: "Neither borgbackup_server nor borgbackup_client nor borgbackup_local is enabled for this host"
+  when: borgbackup_server == False and borgbackup_client == False and borgbackup_local == False
   tags: borgbackup

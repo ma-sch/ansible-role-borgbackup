@@ -2,10 +2,16 @@
 
 set -e
 
-export BORG_RSH="ssh -i {{ borgbackup_client_ssh_key_file }} -p {{ hostvars[borgbackup_client_backup_server].ansible_port }}"
 export BORG_PASSPHRASE="{{ borgbackup_passphrase }}"
 
+{% if borgbackup_client == True %}
+export BORG_RSH="ssh -i {{ borgbackup_client_ssh_key_file }} -p {{ hostvars[borgbackup_client_backup_server].ansible_port }}"
 REPOSITORY={{ borgbackup_server_user }}@{{ borgbackup_client_backup_server_lanfreebackup | default(hostvars[borgbackup_client_backup_server].ansible_host) }}:{{ item.name }}
+{% endif %}
+
+{% if borgbackup_local == True %}
+REPOSITORY={{ borgbackup_local_target }}/{{ item.name }}
+{% endif %}
 
 retry={{ borgbackup_task_retry | default(1) }}
 step_status=0
