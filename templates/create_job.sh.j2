@@ -24,7 +24,12 @@ while [ $retry -gt 0 ]; do
     --exclude '{{ e }}' \
     {% endfor %}
     2>&1 | tee {{ borgbackup_local_lastlog_dir }}/{{ item.name }}_{{ create_suffix_script_filename }}.lastlog \
+    {% if borgbackup_local == True %}
     | /usr/bin/logger -t borgbackup_backup_{{ item.name }}_{{ borgbackup_local_name }}
+    {% endif %}
+    {% if borgbackup_client == True %}
+    | /usr/bin/logger -t borgbackup_backup_{{ item.name }}_{{ borgbackup_client_backup_server }}
+    {% endif %}
   for i in ${PIPESTATUS[@]}; do let step_status+=$i ;done
   if [ $step_status -eq 0 ]; then retry=0; else sleep {{ borgbackup_task_retry_wait | default(30) }}; let retry-=1; fi
 done
